@@ -207,6 +207,35 @@ st.markdown("""
         color: rgba(233,237,247,0.85);
         margin-top: 8px;
     }
+
+    /* ---------- Footer ---------- */
+    .app-footer {
+        margin-top: 40px;
+        padding-top: 24px;
+        border-top: 1px solid rgba(255,255,255,0.08);
+    }
+    .footer-grid {
+        display: flex; flex-wrap: wrap; gap: 24px; justify-content: space-between;
+        align-items: flex-start; margin-bottom: 18px;
+    }
+    .footer-brand h3 {
+        margin: 0 0 4px 0; font-size: 16px; font-weight: 700;
+        background: linear-gradient(90deg, #ffffff, var(--cyan));
+        -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .footer-brand p { margin: 0; font-size: 12px; color: var(--text-muted); }
+    .footer-links { display: flex; gap: 18px; flex-wrap: wrap; }
+    .footer-links a {
+        color: var(--text-muted); text-decoration: none; font-size: 12.5px;
+        font-weight: 600; display: flex; align-items: center; gap: 6px;
+        transition: color 0.15s ease;
+    }
+    .footer-links a:hover { color: var(--cyan); }
+    .footer-bottom {
+        display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px;
+        font-size: 11px; color: rgba(139,149,171,0.7); padding-top: 14px;
+        border-top: 1px solid rgba(255,255,255,0.05);
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -678,3 +707,42 @@ with tab_tracking:
         )
 
         st.caption(f"Showing {len(filtered_orders)} of {len(orders)} total transfer orders.")
+
+# ================= FOOTER (shown on every tab) =================
+st.markdown("""
+<div class="app-footer">
+    <div class="footer-grid">
+        <div class="footer-brand">
+            <h3>📦 StockBridge</h3>
+            <p>Multi-Echelon Inventory Replenishment Planner — built by Nishan C</p>
+        </div>
+        <div class="footer-links">
+            <a href="mailto:nishanchitral@gmail.com">✉️ nishanchitral@gmail.com</a>
+            <a href="https://www.linkedin.com/in/nishan-c-807b2a36b" target="_blank">🔗 LinkedIn</a>
+        </div>
+    </div>
+</div>
+""", unsafe_allow_html=True)
+
+with st.expander("🔒 Privacy Policy"):
+    st.markdown("""
+    - This dashboard is a student internship project built for demonstration purposes only.
+    - All SKU, inventory, demand, and transfer order data shown here is **simulated** — no real customer, vendor, or business data is used or collected.
+    - Any records you add through the sidebar forms are stored in this app's own database (Turso/SQLite) solely to power the demo, and are not shared with or sold to third parties.
+    - No personal data about visitors (location, device, browsing activity) is collected or tracked by this app.
+    """)
+
+with st.expander("📄 Terms & Conditions"):
+    st.markdown("""
+    - This application is provided **as-is**, for educational and portfolio purposes, with no warranty of accuracy, uptime, or fitness for production/commercial use.
+    - The replenishment recommendations, transfer suggestions, and KPIs shown are generated from simulated data and should not be used for real inventory or business decisions.
+    - You're welcome to explore and interact with the demo (add SKUs, create transfer orders, etc.) — data entered may be reset periodically as part of ongoing development.
+    - For questions, feedback, or collaboration inquiries, reach out via the contact links above.
+    """)
+
+st.markdown("""
+<div class="footer-bottom">
+    <span>© 2026 Nishan C · StockBridge</span>
+    <span>Built with Streamlit &amp; Turso</span>
+</div>
+""", unsafe_allow_html=True)
