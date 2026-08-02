@@ -1,6 +1,8 @@
 # 📦 StockBridge — Multi-Echelon Inventory Replenishment Planner
 
 > **Minor Project Submission** — Logistics & Supply Chain Internship (Persevex)
+>
+> 🔗 **Live Demo:** [https://stockbridge40-mbsirrgrwnnslzmvdrowkj.streamlit.app](https://stockbridge40-mbsirrgrwnnslzmvdrowkj.streamlit.app/)
 
 StockBridge is an end-to-end **multi-echelon inventory replenishment planning system** built with Python. It models a realistic supply chain network consisting of a central warehouse and multiple retail stores, then forecasts demand, computes safety stock, generates replenishment transfer orders, and visualizes everything through a modern interactive dashboard.
 
@@ -242,13 +244,13 @@ The Streamlit dashboard (`05_dashboard.py`) provides:
 | Project Presentation | `StockBridge_Presentation.pptx` | ✅ Complete |
 | Project Report | `StockBridge_Project_Report.pdf` | ✅ Complete |
 | Source Code | `Source_Code/` | ✅ Complete |
-| Live Link | See `LIVE_LINK.txt` | 🔗 Deploy & add link |
+| Live Link | [stockbridge40-mbsirrgrwnnslzmvdrowkj.streamlit.app](https://stockbridge40-mbsirrgrwnnslzmvdrowkj.streamlit.app/) | ✅ Deployed |
 
 ---
 
 ## 👤 Author
 
-**Nishan Chitral**
+**Nishan C**
 Logistics & Supply Chain Intern — Persevex
 
 ---
