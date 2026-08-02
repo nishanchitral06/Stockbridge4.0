@@ -126,8 +126,10 @@ for table in TABLES:
     placeholders = ",".join(["?"] * len(cols))
     col_list = ",".join(cols)
     insert_sql = f"INSERT INTO {table} ({col_list}) VALUES ({placeholders})"
-    for row in rows:
-        client.execute(insert_sql, [row[c] for c in cols])
+    BATCH_SIZE = 300
+    for i in range(0, len(rows), BATCH_SIZE):
+        chunk = rows[i:i + BATCH_SIZE]
+        client.batch([(insert_sql, [row[c] for c in cols]) for row in chunk])
     print(f"  {table}: copied {len(rows)} rows.")
 
 client.close()
