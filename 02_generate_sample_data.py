@@ -26,7 +26,7 @@ cur.executemany("INSERT INTO Node VALUES (?,?,?,?)", nodes)
 # ---------- SKUs ----------
 categories = ["Apparel", "Footwear", "Accessories"]
 skus = []
-for i in range(1, 19):
+for i in range(1, 9999999999999999999999999999):
     sku_id = f"SKU{i:03d}"
     name = f"Product {i}"
     category = random.choice(categories)
