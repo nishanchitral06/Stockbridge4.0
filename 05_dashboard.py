@@ -1,12 +1,12 @@
 """
-StockBridge - Phase 4: Inventory Performance Dashboard (Futuristic Dark Theme + Editable + Trackable)
+StockBridge - Phase 4: Inventory Performance Dashboard (Futuristic Light Theme + Editable + Trackable)
 Run with: streamlit run 05_dashboard.py
 
 Data now persists permanently via Turso (cloud database) when TURSO_DATABASE_URL
 and TURSO_AUTH_TOKEN are configured in Streamlit Cloud secrets. Falls back to
 a local stockbridge.db file automatically when running on your own laptop.
 
-Theme is locked to dark mode via .streamlit/config.toml so text stays readable
+Theme is locked to light mode via .streamlit/config.toml so text stays readable
 regardless of the viewer's system/browser theme setting.
 """
 import pandas as pd
@@ -19,36 +19,35 @@ from db import get_conn, DBIntegrityError
 
 st.set_page_config(page_title="StockBridge Dashboard", page_icon="📦", layout="wide")
 
-# ---------------- Custom CSS: Futuristic Dark Theme ----------------
+# ---------------- Custom CSS: Futuristic Light Theme ----------------
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
 
     :root {
-        --bg-deep: #05070d;
-        --bg-mid: #0a0f1e;
-        --panel: rgba(18, 25, 45, 0.55);
-        --panel-border: rgba(0, 229, 255, 0.18);
-        --cyan: #22e5ff;
-        --violet: #9d7bff;
-        --pink: #ff5cb3;
-        --text-primary: #e9edf7;
-        --text-muted: #8b95ab;
-        --good: #33e6a0;
-        --warn: #ffb545;
-        --bad: #ff5c7a;
+        --bg-base: #f6f8fd;
+        --panel: rgba(255, 255, 255, 0.65);
+        --panel-border: rgba(58, 108, 255, 0.18);
+        --blue: #3a6cff;
+        --violet: #8a5cf6;
+        --pink: #ff5cae;
+        --text-primary: #101b3d;
+        --text-muted: #667089;
+        --good: #17b26a;
+        --warn: #e28a1f;
+        --bad: #e0344c;
     }
 
     html, body, [class*="css"] { font-family: 'Space Grotesk', sans-serif; }
     code, .stCodeBlock, .stCode { font-family: 'JetBrains Mono', monospace !important; }
 
-    /* ---------- Global app background: deep space gradient + glow grid ---------- */
+    /* ---------- Global app background: soft white with color washes ---------- */
     .stApp {
         background:
-            radial-gradient(circle at 15% 0%, rgba(34,229,255,0.10) 0%, transparent 45%),
-            radial-gradient(circle at 85% 15%, rgba(157,123,255,0.12) 0%, transparent 45%),
-            radial-gradient(circle at 50% 100%, rgba(255,92,179,0.08) 0%, transparent 50%),
-            linear-gradient(180deg, var(--bg-deep) 0%, var(--bg-mid) 100%);
+            radial-gradient(circle at 12% 0%, rgba(58,108,255,0.10) 0%, transparent 42%),
+            radial-gradient(circle at 88% 12%, rgba(138,92,246,0.12) 0%, transparent 45%),
+            radial-gradient(circle at 50% 100%, rgba(255,92,174,0.08) 0%, transparent 50%),
+            linear-gradient(180deg, #ffffff 0%, var(--bg-base) 100%);
         background-attachment: fixed;
         color: var(--text-primary);
     }
@@ -63,33 +62,33 @@ st.markdown("""
     /* Inputs, selects, dropdowns */
     .stTextInput input, .stNumberInput input, .stDateInput input,
     .stSelectbox div[data-baseweb="select"] > div, .stMultiSelect div[data-baseweb="select"] > div {
-        background: rgba(255,255,255,0.04) !important;
+        background: rgba(255,255,255,0.9) !important;
         color: var(--text-primary) !important;
-        border: 1px solid rgba(255,255,255,0.12) !important;
+        border: 1px solid rgba(16,27,61,0.14) !important;
         border-radius: 8px !important;
     }
     .stTextInput label, .stNumberInput label, .stDateInput label,
     .stSelectbox label, .stMultiSelect label { color: var(--text-muted) !important; font-size: 13px !important; }
-    ul[data-testid="stSelectboxVirtualDropdown"] li, div[data-baseweb="popover"] li { color: #0b0f1a !important; }
+    ul[data-testid="stSelectboxVirtualDropdown"] li, div[data-baseweb="popover"] li { color: #101b3d !important; }
 
     /* Alerts (info / success / warning / error) */
     div[data-testid="stAlert"] { border-radius: 10px !important; backdrop-filter: blur(6px); }
     div[data-testid="stAlert"] p { color: var(--text-primary) !important; }
 
     /* Tabs */
-    .stTabs [data-baseweb="tab-list"] { gap: 6px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+    .stTabs [data-baseweb="tab-list"] { gap: 6px; border-bottom: 1px solid rgba(16,27,61,0.08); }
     .stTabs [data-baseweb="tab"] {
         color: var(--text-muted); font-weight: 600; font-size: 14px;
         background: transparent; border-radius: 8px 8px 0 0; padding: 8px 16px;
     }
     .stTabs [aria-selected="true"] {
-        color: var(--cyan) !important;
-        background: rgba(34,229,255,0.08) !important;
-        border-bottom: 2px solid var(--cyan) !important;
+        color: var(--blue) !important;
+        background: rgba(58,108,255,0.08) !important;
+        border-bottom: 2px solid var(--blue) !important;
     }
 
     /* Dataframes / tables */
-    [data-testid="stDataFrame"] { border-radius: 12px; overflow: hidden; border: 1px solid rgba(255,255,255,0.08); }
+    [data-testid="stDataFrame"] { border-radius: 12px; overflow: hidden; border: 1px solid rgba(16,27,61,0.08); }
 
     /* Expanders (main area, if any) */
     div[data-testid="stExpander"] {
@@ -99,23 +98,23 @@ st.markdown("""
     /* ---------- Hero banner ---------- */
     .hero {
         position: relative;
-        background: linear-gradient(120deg, rgba(34,229,255,0.15) 0%, rgba(157,123,255,0.18) 50%, rgba(255,92,179,0.12) 100%);
-        border: 1px solid rgba(255,255,255,0.10);
+        background: linear-gradient(120deg, rgba(58,108,255,0.14) 0%, rgba(138,92,246,0.16) 50%, rgba(255,92,174,0.12) 100%);
+        border: 1px solid rgba(16,27,61,0.08);
         padding: 28px 32px;
         border-radius: 18px;
         margin-bottom: 24px;
         backdrop-filter: blur(14px);
-        box-shadow: 0 0 40px rgba(34,229,255,0.08), inset 0 1px 0 rgba(255,255,255,0.06);
+        box-shadow: 0 8px 32px rgba(58,108,255,0.10), inset 0 1px 0 rgba(255,255,255,0.6);
         overflow: hidden;
     }
     .hero::before {
         content: ""; position: absolute; inset: 0;
-        background: linear-gradient(90deg, var(--cyan), var(--violet), var(--pink));
+        background: linear-gradient(90deg, var(--blue), var(--violet), var(--pink));
         opacity: 0.9; height: 3px; top: 0; left: 0; right: 0;
     }
     .hero h1 {
         margin: 0; font-size: 30px; font-weight: 700; letter-spacing: 0.5px;
-        background: linear-gradient(90deg, #ffffff, var(--cyan));
+        background: linear-gradient(90deg, var(--text-primary), var(--blue));
         -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
     }
     .hero p { color: var(--text-muted); margin: 6px 0 0 0; font-size: 14px; }
@@ -127,14 +126,14 @@ st.markdown("""
         border-radius: 16px;
         padding: 18px 20px;
         backdrop-filter: blur(12px);
-        box-shadow: 0 4px 24px rgba(0,0,0,0.35);
+        box-shadow: 0 4px 20px rgba(16,27,61,0.08);
         transition: all 0.2s ease;
     }
-    .kpi-card:hover { border-color: rgba(34,229,255,0.45); box-shadow: 0 4px 28px rgba(34,229,255,0.15); transform: translateY(-2px); }
+    .kpi-card:hover { border-color: rgba(58,108,255,0.4); box-shadow: 0 6px 26px rgba(58,108,255,0.16); transform: translateY(-2px); }
     .kpi-label { color: var(--text-muted); font-size: 11.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
     .kpi-value {
         font-size: 30px; font-weight: 700; margin-top: 6px;
-        background: linear-gradient(90deg, var(--cyan), var(--violet));
+        background: linear-gradient(90deg, var(--blue), var(--violet));
         -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
     }
     .kpi-sub { font-size: 12px; margin-top: 6px; font-weight: 500; }
@@ -145,66 +144,66 @@ st.markdown("""
     .section-title {
         color: var(--text-primary); font-size: 18px; font-weight: 700;
         margin-top: 8px; margin-bottom: 14px;
-        border-left: 3px solid var(--cyan); padding-left: 12px;
-        text-shadow: 0 0 18px rgba(34,229,255,0.25);
+        border-left: 3px solid var(--blue); padding-left: 12px;
     }
 
     .status-badge {
         display: inline-block; padding: 3px 12px; border-radius: 20px;
-        font-size: 11.5px; font-weight: 700; color: #06121a;
-        box-shadow: 0 0 10px rgba(0,0,0,0.3);
+        font-size: 11.5px; font-weight: 700; color: #ffffff;
+        box-shadow: 0 2px 8px rgba(16,27,61,0.15);
     }
 
     /* ---------- Sidebar ---------- */
     section[data-testid="stSidebar"] {
-        background: linear-gradient(180deg, #070b16 0%, #0c1226 100%);
-        border-right: 1px solid rgba(255,255,255,0.06);
+        background: linear-gradient(180deg, #ffffff 0%, #eef2fe 100%);
+        border-right: 1px solid rgba(16,27,61,0.06);
     }
     section[data-testid="stSidebar"] .block-container { padding-top: 1.6rem; }
     .sidebar-hero {
-        background: linear-gradient(135deg, rgba(34,229,255,0.18) 0%, rgba(157,123,255,0.22) 100%);
-        border: 1px solid rgba(255,255,255,0.10);
+        background: linear-gradient(135deg, rgba(58,108,255,0.14) 0%, rgba(138,92,246,0.16) 100%);
+        border: 1px solid rgba(16,27,61,0.08);
         border-radius: 14px;
         padding: 16px 16px;
         margin-bottom: 18px;
-        box-shadow: 0 0 24px rgba(34,229,255,0.10);
+        box-shadow: 0 4px 18px rgba(58,108,255,0.10);
     }
-    .sidebar-hero h2 { color: #ffffff; margin: 0; font-size: 17px; }
-    .sidebar-hero p { color: rgba(233,237,247,0.8); margin: 4px 0 0 0; font-size: 12px; line-height: 1.4; }
+    .sidebar-hero h2 { color: var(--text-primary); margin: 0; font-size: 17px; }
+    .sidebar-hero p { color: var(--text-muted); margin: 4px 0 0 0; font-size: 12px; line-height: 1.4; }
 
     section[data-testid="stSidebar"] div[data-testid="stExpander"] {
-        background: rgba(255,255,255,0.03);
-        border: 1px solid rgba(255,255,255,0.08);
+        background: rgba(255,255,255,0.85);
+        border: 1px solid rgba(16,27,61,0.08);
         border-radius: 10px;
         margin-bottom: 10px;
+        box-shadow: 0 1px 6px rgba(16,27,61,0.05);
     }
     section[data-testid="stSidebar"] div[data-testid="stExpander"] summary {
         font-weight: 600; font-size: 13.5px; color: var(--text-primary) !important;
         padding: 4px 2px;
     }
     section[data-testid="stSidebar"] div[data-testid="stExpander"] summary span { color: var(--text-primary) !important; }
-    section[data-testid="stSidebar"] div[data-testid="stExpander"]:hover { border-color: rgba(34,229,255,0.4); }
+    section[data-testid="stSidebar"] div[data-testid="stExpander"]:hover { border-color: rgba(58,108,255,0.4); }
 
     section[data-testid="stSidebar"] .stButton button,
     section[data-testid="stSidebar"] .stFormSubmitButton button {
-        background: linear-gradient(135deg, var(--cyan) 0%, var(--violet) 100%);
-        color: #06121a; border: none; border-radius: 8px;
+        background: linear-gradient(135deg, var(--blue) 0%, var(--violet) 100%);
+        color: #ffffff; border: none; border-radius: 8px;
         font-weight: 700; font-size: 13px; padding: 7px 14px;
         width: 100%; transition: all 0.15s ease;
     }
     section[data-testid="stSidebar"] .stButton button:hover,
     section[data-testid="stSidebar"] .stFormSubmitButton button:hover {
-        box-shadow: 0 0 18px rgba(34,229,255,0.5);
+        box-shadow: 0 4px 16px rgba(58,108,255,0.35);
         transform: translateY(-1px);
     }
 
     .sidebar-note {
-        background: rgba(255,181,69,0.08);
+        background: rgba(226,138,31,0.08);
         border-left: 3px solid var(--warn);
         border-radius: 6px;
         padding: 10px 12px;
         font-size: 11.5px;
-        color: rgba(233,237,247,0.85);
+        color: #5a4526;
         margin-top: 8px;
     }
 
@@ -212,7 +211,7 @@ st.markdown("""
     .app-footer {
         margin-top: 40px;
         padding-top: 24px;
-        border-top: 1px solid rgba(255,255,255,0.08);
+        border-top: 1px solid rgba(16,27,61,0.08);
     }
     .footer-grid {
         display: flex; flex-wrap: wrap; gap: 24px; justify-content: space-between;
@@ -220,7 +219,7 @@ st.markdown("""
     }
     .footer-brand h3 {
         margin: 0 0 4px 0; font-size: 16px; font-weight: 700;
-        background: linear-gradient(90deg, #ffffff, var(--cyan));
+        background: linear-gradient(90deg, var(--text-primary), var(--blue));
         -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
     }
     .footer-brand p { margin: 0; font-size: 12px; color: var(--text-muted); }
@@ -230,18 +229,18 @@ st.markdown("""
         font-weight: 600; display: flex; align-items: center; gap: 6px;
         transition: color 0.15s ease;
     }
-    .footer-links a:hover { color: var(--cyan); }
+    .footer-links a:hover { color: var(--blue); }
     .footer-bottom {
         display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px;
-        font-size: 11px; color: rgba(139,149,171,0.7); padding-top: 14px;
-        border-top: 1px solid rgba(255,255,255,0.05);
+        font-size: 11px; color: rgba(102,112,137,0.85); padding-top: 14px;
+        border-top: 1px solid rgba(16,27,61,0.05);
     }
 </style>
 """, unsafe_allow_html=True)
 
 STATUS_COLORS = {
-    "Delivered": "#33e6a0", "Approved": "#22e5ff", "In-Transit": "#ffb545",
-    "Delayed": "#ff5c7a", "Requested": "#9d7bff"
+    "Delivered": "#17b26a", "Approved": "#3a6cff", "In-Transit": "#e28a1f",
+    "Delayed": "#e0344c", "Requested": "#8a5cf6"
 }
 
 
@@ -478,13 +477,13 @@ with tab_overview:
             fig1 = go.Figure(data=[go.Pie(
                 labels=status_counts["status"], values=status_counts["count"], hole=0.6,
                 marker=dict(colors=[STATUS_COLORS.get(s, "#888") for s in status_counts["status"]],
-                            line=dict(color="#05070d", width=2)),
-                textinfo="label+percent", textfont=dict(size=13, color="#e9edf7")
+                            line=dict(color="#ffffff", width=2)),
+                textinfo="label+percent", textfont=dict(size=13, color="#101b3d")
             )])
             fig1.update_layout(
                 showlegend=False, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
                 margin=dict(t=10, b=10, l=10, r=10), height=340,
-                annotations=[dict(text=f"{len(orders)}<br>Orders", x=0.5, y=0.5, font_size=18, font_color="#22e5ff", showarrow=False)]
+                annotations=[dict(text=f"{len(orders)}<br>Orders", x=0.5, y=0.5, font_size=18, font_color="#3a6cff", showarrow=False)]
             )
             st.plotly_chart(fig1, use_container_width=True)
         else:
@@ -497,15 +496,15 @@ with tab_overview:
             comp["planned_delivery_date"] = pd.to_datetime(comp["planned_delivery_date"])
             comp["actual_delivery_date"] = pd.to_datetime(comp["actual_delivery_date"])
             comp["delay_days"] = (comp["actual_delivery_date"] - comp["planned_delivery_date"]).dt.days
-            fig2 = px.histogram(comp, x="delay_days", nbins=8, color_discrete_sequence=["#22e5ff"])
+            fig2 = px.histogram(comp, x="delay_days", nbins=8, color_discrete_sequence=["#3a6cff"])
             fig2.update_layout(
                 paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-                font_color="#e9edf7", margin=dict(t=10, b=10, l=10, r=10), height=340,
+                font_color="#101b3d", margin=dict(t=10, b=10, l=10, r=10), height=340,
                 xaxis_title="Delay (days)", yaxis_title="Orders",
-                xaxis=dict(gridcolor="rgba(255,255,255,0.08)", zerolinecolor="rgba(255,255,255,0.15)"),
-                yaxis=dict(gridcolor="rgba(255,255,255,0.08)", zerolinecolor="rgba(255,255,255,0.15)")
+                xaxis=dict(gridcolor="rgba(16,27,61,0.08)", zerolinecolor="rgba(16,27,61,0.15)"),
+                yaxis=dict(gridcolor="rgba(16,27,61,0.08)", zerolinecolor="rgba(16,27,61,0.15)")
             )
-            fig2.update_traces(marker_line_color="#05070d", marker_line_width=1)
+            fig2.update_traces(marker_line_color="#ffffff", marker_line_width=1)
             st.plotly_chart(fig2, use_container_width=True)
         else:
             st.info("No completed deliveries yet.")
@@ -519,14 +518,14 @@ with tab_overview:
             top_risk["label"] = top_risk["sku_id"] + " @ " + top_risk["store"]
             fig3 = px.bar(
                 top_risk.sort_values("days_of_stock_left"), x="days_of_stock_left", y="label", orientation="h",
-                color="days_of_stock_left", color_continuous_scale=["#ff5c7a", "#ffb545", "#33e6a0"],
+                color="days_of_stock_left", color_continuous_scale=["#e0344c", "#e28a1f", "#17b26a"],
                 labels={"days_of_stock_left": "Days of Stock Left", "label": ""}
             )
             fig3.update_layout(
                 paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-                font_color="#e9edf7", margin=dict(t=10, b=10, l=10, r=10), height=380, coloraxis_showscale=False,
-                xaxis=dict(gridcolor="rgba(255,255,255,0.08)", zerolinecolor="rgba(255,255,255,0.15)"),
-                yaxis=dict(gridcolor="rgba(255,255,255,0.03)")
+                font_color="#101b3d", margin=dict(t=10, b=10, l=10, r=10), height=380, coloraxis_showscale=False,
+                xaxis=dict(gridcolor="rgba(16,27,61,0.08)", zerolinecolor="rgba(16,27,61,0.15)"),
+                yaxis=dict(gridcolor="rgba(16,27,61,0.03)")
             )
             st.plotly_chart(fig3, use_container_width=True)
         else:
