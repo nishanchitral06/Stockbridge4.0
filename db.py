@@ -1,4 +1,4 @@
-"""
+v"""
 StockBridge - Database Connection Helper
 ==========================================
 This module makes the rest of the app work with EITHER:
@@ -22,12 +22,14 @@ class DBIntegrityError(Exception):
 
 
 def _get_turso_credentials():
+    # Try Streamlit secrets first (this is how Streamlit Cloud provides them)
     try:
         import streamlit as st
         if "TURSO_DATABASE_URL" in st.secrets and "TURSO_AUTH_TOKEN" in st.secrets:
             return st.secrets["TURSO_DATABASE_URL"], st.secrets["TURSO_AUTH_TOKEN"]
     except Exception:
         pass
+    # Fall back to plain environment variables (useful for scripts / local testing)
     url = os.environ.get("TURSO_DATABASE_URL")
     token = os.environ.get("TURSO_AUTH_TOKEN")
     if url and token:
@@ -80,17 +82,18 @@ class DBConnection:
         else:
             self.conn.executemany(sql, rows)
 
-    def read_df(self, sql, params=None):
-        params = params or []
+    def read_df(self, sql):
         if self.mode == "turso":
-            rs = self.client.execute(sql, params)
+            rs = self.client.execute(sql)
             return pd.DataFrame([list(r) for r in rs.rows], columns=rs.columns)
         else:
-            return pd.read_sql(sql, self.conn, params=params)
+            return pd.read_sql(sql, self.conn)
 
     def commit(self):
         if self.mode == "sqlite":
             self.conn.commit()
+        # Turso's client commits each statement over HTTP automatically -
+        # nothing extra needed here.
 
     def close(self):
         if self.mode == "turso":
