@@ -82,12 +82,13 @@ class DBConnection:
         else:
             self.conn.executemany(sql, rows)
 
-    def read_df(self, sql):
+    def read_df(self, sql, params=None):
+        params = params or []
         if self.mode == "turso":
-            rs = self.client.execute(sql)
+            rs = self.client.execute(sql, params)
             return pd.DataFrame([list(r) for r in rs.rows], columns=rs.columns)
         else:
-            return pd.read_sql(sql, self.conn)
+            return pd.read_sql(sql, self.conn, params=params)
 
     def commit(self):
         if self.mode == "sqlite":
