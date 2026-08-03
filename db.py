@@ -22,14 +22,12 @@ class DBIntegrityError(Exception):
 
 
 def _get_turso_credentials():
-    # Try Streamlit secrets first (this is how Streamlit Cloud provides them)
     try:
         import streamlit as st
         if "TURSO_DATABASE_URL" in st.secrets and "TURSO_AUTH_TOKEN" in st.secrets:
             return st.secrets["TURSO_DATABASE_URL"], st.secrets["TURSO_AUTH_TOKEN"]
     except Exception:
         pass
-    # Fall back to plain environment variables (useful for scripts / local testing)
     url = os.environ.get("TURSO_DATABASE_URL")
     token = os.environ.get("TURSO_AUTH_TOKEN")
     if url and token:
@@ -93,8 +91,6 @@ class DBConnection:
     def commit(self):
         if self.mode == "sqlite":
             self.conn.commit()
-        # Turso's client commits each statement over HTTP automatically -
-        # nothing extra needed here.
 
     def close(self):
         if self.mode == "turso":
