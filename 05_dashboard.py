@@ -1,13 +1,10 @@
 """
-StockBridge - Phase 4: Inventory Performance Dashboard (Futuristic Light Theme + Editable + Trackable)
+StockBridge - Phase 4: Inventory Performance Dashboard (White Theme + Editable + Trackable)
 Run with: streamlit run 05_dashboard.py
 
 Data now persists permanently via Turso (cloud database) when TURSO_DATABASE_URL
 and TURSO_AUTH_TOKEN are configured in Streamlit Cloud secrets. Falls back to
 a local stockbridge.db file automatically when running on your own laptop.
-
-Theme is locked to light mode via .streamlit/config.toml so text stays readable
-regardless of the viewer's system/browser theme setting.
 """
 import pandas as pd
 import numpy as np
@@ -19,228 +16,108 @@ from db import get_conn, DBIntegrityError
 
 st.set_page_config(page_title="StockBridge Dashboard", page_icon="📦", layout="wide")
 
-# ---------------- Custom CSS: Futuristic Light Theme ----------------
+# ---------------- Custom CSS: White Theme ----------------
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
+    .main, .block-container { background-color: #ffffff; }
+    .block-container { padding-top: 2rem; padding-bottom: 2rem; }
 
-    :root {
-        --bg-base: #f6f8fd;
-        --panel: rgba(255, 255, 255, 0.65);
-        --panel-border: rgba(58, 108, 255, 0.18);
-        --blue: #3a6cff;
-        --violet: #8a5cf6;
-        --pink: #ff5cae;
-        --text-primary: #101b3d;
-        --text-muted: #667089;
-        --good: #17b26a;
-        --warn: #e28a1f;
-        --bad: #e0344c;
-    }
-
-    html, body, [class*="css"] { font-family: 'Space Grotesk', sans-serif; }
-    code, .stCodeBlock, .stCode { font-family: 'JetBrains Mono', monospace !important; }
-
-    /* ---------- Global app background: soft white with color washes ---------- */
-    .stApp {
-        background:
-            radial-gradient(circle at 12% 0%, rgba(58,108,255,0.10) 0%, transparent 42%),
-            radial-gradient(circle at 88% 12%, rgba(138,92,246,0.12) 0%, transparent 45%),
-            radial-gradient(circle at 50% 100%, rgba(255,92,174,0.08) 0%, transparent 50%),
-            linear-gradient(180deg, #ffffff 0%, var(--bg-base) 100%);
-        background-attachment: fixed;
-        color: var(--text-primary);
-    }
-    .block-container { padding-top: 2rem; padding-bottom: 3rem; }
-
-    /* ---------- Force readable text everywhere, regardless of viewer's theme toggle ---------- */
-    h1, h2, h3, h4, h5, h6, p, span, label, div, .stMarkdown, .stCaption, .stText {
-        color: var(--text-primary);
-    }
-    .stCaption, small, [data-testid="stCaptionContainer"] { color: var(--text-muted) !important; }
-
-    /* Inputs, selects, dropdowns */
-    .stTextInput input, .stNumberInput input, .stDateInput input,
-    .stSelectbox div[data-baseweb="select"] > div, .stMultiSelect div[data-baseweb="select"] > div {
-        background: rgba(255,255,255,0.9) !important;
-        color: var(--text-primary) !important;
-        border: 1px solid rgba(16,27,61,0.14) !important;
-        border-radius: 8px !important;
-    }
-    .stTextInput label, .stNumberInput label, .stDateInput label,
-    .stSelectbox label, .stMultiSelect label { color: var(--text-muted) !important; font-size: 13px !important; }
-    ul[data-testid="stSelectboxVirtualDropdown"] li, div[data-baseweb="popover"] li { color: #101b3d !important; }
-
-    /* Alerts (info / success / warning / error) */
-    div[data-testid="stAlert"] { border-radius: 10px !important; backdrop-filter: blur(6px); }
-    div[data-testid="stAlert"] p { color: var(--text-primary) !important; }
-
-    /* Tabs */
-    .stTabs [data-baseweb="tab-list"] { gap: 6px; border-bottom: 1px solid rgba(16,27,61,0.08); }
-    .stTabs [data-baseweb="tab"] {
-        color: var(--text-muted); font-weight: 600; font-size: 14px;
-        background: transparent; border-radius: 8px 8px 0 0; padding: 8px 16px;
-    }
-    .stTabs [aria-selected="true"] {
-        color: var(--blue) !important;
-        background: rgba(58,108,255,0.08) !important;
-        border-bottom: 2px solid var(--blue) !important;
-    }
-
-    /* Dataframes / tables */
-    [data-testid="stDataFrame"] { border-radius: 12px; overflow: hidden; border: 1px solid rgba(16,27,61,0.08); }
-
-    /* Expanders (main area, if any) */
-    div[data-testid="stExpander"] {
-        background: var(--panel); border: 1px solid var(--panel-border); border-radius: 12px;
-    }
-
-    /* ---------- Hero banner ---------- */
     .hero {
-        position: relative;
-        background: linear-gradient(120deg, rgba(58,108,255,0.14) 0%, rgba(138,92,246,0.16) 50%, rgba(255,92,174,0.12) 100%);
-        border: 1px solid rgba(16,27,61,0.08);
-        padding: 28px 32px;
-        border-radius: 18px;
-        margin-bottom: 24px;
-        backdrop-filter: blur(14px);
-        box-shadow: 0 8px 32px rgba(58,108,255,0.10), inset 0 1px 0 rgba(255,255,255,0.6);
-        overflow: hidden;
-    }
-    .hero::before {
-        content: ""; position: absolute; inset: 0;
-        background: linear-gradient(90deg, var(--blue), var(--violet), var(--pink));
-        opacity: 0.9; height: 3px; top: 0; left: 0; right: 0;
-    }
-    .hero h1 {
-        margin: 0; font-size: 30px; font-weight: 700; letter-spacing: 0.5px;
-        background: linear-gradient(90deg, var(--text-primary), var(--blue));
-        -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
-    }
-    .hero p { color: var(--text-muted); margin: 6px 0 0 0; font-size: 14px; }
-
-    /* ---------- KPI cards ---------- */
-    .kpi-card {
-        background: var(--panel);
-        border: 1px solid var(--panel-border);
+        background: linear-gradient(135deg, #3949ab 0%, #5c6bc0 50%, #7986cb 100%);
+        padding: 26px 32px;
         border-radius: 16px;
-        padding: 18px 20px;
-        backdrop-filter: blur(12px);
-        box-shadow: 0 4px 20px rgba(16,27,61,0.08);
-        transition: all 0.2s ease;
+        margin-bottom: 22px;
+        box-shadow: 0 6px 18px rgba(57,73,171,0.25);
     }
-    .kpi-card:hover { border-color: rgba(58,108,255,0.4); box-shadow: 0 6px 26px rgba(58,108,255,0.16); transform: translateY(-2px); }
-    .kpi-label { color: var(--text-muted); font-size: 11.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
-    .kpi-value {
-        font-size: 30px; font-weight: 700; margin-top: 6px;
-        background: linear-gradient(90deg, var(--blue), var(--violet));
-        -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+    .hero h1 { color: white; margin: 0; font-size: 28px; }
+    .hero p { color: #e8eaf6; margin: 4px 0 0 0; font-size: 14px; }
+
+    .kpi-card {
+        background: #ffffff;
+        border: 1px solid #e0e0e0;
+        border-radius: 14px;
+        padding: 16px 18px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
     }
-    .kpi-sub { font-size: 12px; margin-top: 6px; font-weight: 500; }
-    .kpi-good { color: var(--good); }
-    .kpi-warn { color: var(--warn); }
-    .kpi-bad { color: var(--bad); }
+    .kpi-label { color: #757575; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+    .kpi-value { color: #1a237e; font-size: 28px; font-weight: 700; margin-top: 4px; }
+    .kpi-sub { font-size: 12px; margin-top: 4px; }
+    .kpi-good { color: #2e7d32; }
+    .kpi-warn { color: #ef6c00; }
+    .kpi-bad { color: #c62828; }
 
     .section-title {
-        color: var(--text-primary); font-size: 18px; font-weight: 700;
-        margin-top: 8px; margin-bottom: 14px;
-        border-left: 3px solid var(--blue); padding-left: 12px;
+        color: #1a237e; font-size: 18px; font-weight: 700;
+        margin-top: 6px; margin-bottom: 12px;
+        border-left: 4px solid #3949ab; padding-left: 10px;
     }
 
     .status-badge {
-        display: inline-block; padding: 3px 12px; border-radius: 20px;
-        font-size: 11.5px; font-weight: 700; color: #ffffff;
-        box-shadow: 0 2px 8px rgba(16,27,61,0.15);
+        display: inline-block; padding: 3px 10px; border-radius: 12px;
+        font-size: 11.5px; font-weight: 700; color: white;
     }
 
-    /* ---------- Sidebar ---------- */
+    /* ---------- Sidebar Styling ---------- */
     section[data-testid="stSidebar"] {
-        background: linear-gradient(180deg, #ffffff 0%, #eef2fe 100%);
-        border-right: 1px solid rgba(16,27,61,0.06);
+        background: linear-gradient(180deg, #f5f6fb 0%, #eef0fa 100%);
+        border-right: 1px solid #e0e0e0;
     }
-    section[data-testid="stSidebar"] .block-container { padding-top: 1.6rem; }
+    section[data-testid="stSidebar"] .block-container {
+        padding-top: 1.6rem;
+    }
     .sidebar-hero {
-        background: linear-gradient(135deg, rgba(58,108,255,0.14) 0%, rgba(138,92,246,0.16) 100%);
-        border: 1px solid rgba(16,27,61,0.08);
-        border-radius: 14px;
+        background: linear-gradient(135deg, #3949ab 0%, #5c6bc0 100%);
+        border-radius: 12px;
         padding: 16px 16px;
         margin-bottom: 18px;
-        box-shadow: 0 4px 18px rgba(58,108,255,0.10);
+        box-shadow: 0 4px 14px rgba(57,73,171,0.25);
     }
-    .sidebar-hero h2 { color: var(--text-primary); margin: 0; font-size: 17px; }
-    .sidebar-hero p { color: var(--text-muted); margin: 4px 0 0 0; font-size: 12px; line-height: 1.4; }
+    .sidebar-hero h2 { color: white; margin: 0; font-size: 18px; }
+    .sidebar-hero p { color: #e8eaf6; margin: 4px 0 0 0; font-size: 12px; line-height: 1.4; }
 
     section[data-testid="stSidebar"] div[data-testid="stExpander"] {
-        background: rgba(255,255,255,0.85);
-        border: 1px solid rgba(16,27,61,0.08);
+        background: #ffffff;
+        border: 1px solid #e2e4f0;
         border-radius: 10px;
         margin-bottom: 10px;
-        box-shadow: 0 1px 6px rgba(16,27,61,0.05);
+        box-shadow: 0 1px 4px rgba(0,0,0,0.04);
     }
     section[data-testid="stSidebar"] div[data-testid="stExpander"] summary {
-        font-weight: 600; font-size: 13.5px; color: var(--text-primary) !important;
+        font-weight: 600; font-size: 13.5px; color: #1a237e;
         padding: 4px 2px;
     }
-    section[data-testid="stSidebar"] div[data-testid="stExpander"] summary span { color: var(--text-primary) !important; }
-    section[data-testid="stSidebar"] div[data-testid="stExpander"]:hover { border-color: rgba(58,108,255,0.4); }
+    section[data-testid="stSidebar"] div[data-testid="stExpander"]:hover {
+        border-color: #7986cb;
+    }
 
     section[data-testid="stSidebar"] .stButton button,
     section[data-testid="stSidebar"] .stFormSubmitButton button {
-        background: linear-gradient(135deg, var(--blue) 0%, var(--violet) 100%);
-        color: #ffffff; border: none; border-radius: 8px;
-        font-weight: 700; font-size: 13px; padding: 7px 14px;
+        background: linear-gradient(135deg, #3949ab 0%, #5c6bc0 100%);
+        color: white; border: none; border-radius: 8px;
+        font-weight: 600; font-size: 13px; padding: 6px 14px;
         width: 100%; transition: all 0.15s ease;
     }
     section[data-testid="stSidebar"] .stButton button:hover,
     section[data-testid="stSidebar"] .stFormSubmitButton button:hover {
-        box-shadow: 0 4px 16px rgba(58,108,255,0.35);
+        box-shadow: 0 4px 10px rgba(57,73,171,0.35);
         transform: translateY(-1px);
     }
 
     .sidebar-note {
-        background: rgba(226,138,31,0.08);
-        border-left: 3px solid var(--warn);
+        background: #fff8e1;
+        border-left: 3px solid #f9a825;
         border-radius: 6px;
         padding: 10px 12px;
         font-size: 11.5px;
-        color: #5a4526;
+        color: #5d4037;
         margin-top: 8px;
-    }
-
-    /* ---------- Footer ---------- */
-    .app-footer {
-        margin-top: 40px;
-        padding-top: 24px;
-        border-top: 1px solid rgba(16,27,61,0.08);
-    }
-    .footer-grid {
-        display: flex; flex-wrap: wrap; gap: 24px; justify-content: space-between;
-        align-items: flex-start; margin-bottom: 18px;
-    }
-    .footer-brand h3 {
-        margin: 0 0 4px 0; font-size: 16px; font-weight: 700;
-        background: linear-gradient(90deg, var(--text-primary), var(--blue));
-        -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
-    }
-    .footer-brand p { margin: 0; font-size: 12px; color: var(--text-muted); }
-    .footer-links { display: flex; gap: 18px; flex-wrap: wrap; }
-    .footer-links a {
-        color: var(--text-muted); text-decoration: none; font-size: 12.5px;
-        font-weight: 600; display: flex; align-items: center; gap: 6px;
-        transition: color 0.15s ease;
-    }
-    .footer-links a:hover { color: var(--blue); }
-    .footer-bottom {
-        display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px;
-        font-size: 11px; color: rgba(102,112,137,0.85); padding-top: 14px;
-        border-top: 1px solid rgba(16,27,61,0.05);
     }
 </style>
 """, unsafe_allow_html=True)
 
 STATUS_COLORS = {
-    "Delivered": "#17b26a", "Approved": "#3a6cff", "In-Transit": "#e28a1f",
-    "Delayed": "#e0344c", "Requested": "#8a5cf6"
+    "Delivered": "#2e7d32", "Approved": "#1976d2", "In-Transit": "#ef6c00",
+    "Delayed": "#c62828", "Requested": "#9e9e9e"
 }
 
 
@@ -264,6 +141,38 @@ rec, orders, skus, nodes, inv, demand = (
 )
 
 # ================= SIDEBAR: Add / Edit Data =================
+
+def get_latest_qty(conn, sku_id, node_id):
+    """Return the most recent quantity_on_hand for a SKU at a Node, or 0 if none exists."""
+    cur = conn.execute(
+        "SELECT quantity_on_hand FROM InventorySnapshot WHERE sku_id=? AND node_id=? ORDER BY snapshot_date DESC, id DESC LIMIT 1",
+        (sku_id, node_id)
+    )
+    row = cur.fetchone()
+    return row[0] if row else 0
+
+
+def move_inventory(conn, sku_id, source_node_id, dest_node_id, qty, as_of_date):
+    """Move `qty` units of a SKU from source_node to dest_node by writing new
+    InventorySnapshot rows for both locations, reflecting the updated totals.
+    This is what actually makes a 'Delivered' transfer show up at the store
+    instead of staying counted at the warehouse."""
+    source_qty = get_latest_qty(conn, sku_id, source_node_id)
+    dest_qty = get_latest_qty(conn, sku_id, dest_node_id)
+
+    new_source_qty = max(0, source_qty - qty)
+    new_dest_qty = dest_qty + qty
+
+    conn.execute(
+        "INSERT INTO InventorySnapshot (sku_id, node_id, snapshot_date, quantity_on_hand) VALUES (?,?,?,?)",
+        (sku_id, source_node_id, as_of_date, new_source_qty)
+    )
+    conn.execute(
+        "INSERT INTO InventorySnapshot (sku_id, node_id, snapshot_date, quantity_on_hand) VALUES (?,?,?,?)",
+        (sku_id, dest_node_id, as_of_date, new_dest_qty)
+    )
+
+
 st.sidebar.markdown("""
 <div class="sidebar-hero">
     <h2>⚙️ Manage StockBridge</h2>
@@ -357,9 +266,17 @@ with st.sidebar.expander("🚚  Create Transfer Order", expanded=False):
                 VALUES (?,?,?,?,?,?,?)
             """, (t_sku, t_source, t_dest, t_qty, t_status,
                   t_req_date.strftime("%Y-%m-%d"), t_planned_date.strftime("%Y-%m-%d")))
+
+            # If the order is created directly as "Delivered", move the stock now
+            if t_status == "Delivered":
+                move_inventory(conn, t_sku, t_source, t_dest, t_qty, date.today().strftime("%Y-%m-%d"))
+
             conn.commit()
             conn.close()
-            st.success("Order created. Find it under the 'Order Tracking' tab.")
+            if t_status == "Delivered":
+                st.success("Order created and marked Delivered — stock moved from source to destination. Check 'Stock Quantity by Location'.")
+            else:
+                st.success("Order created. Find it under the 'Order Tracking' tab. Stock will move once it's marked Delivered.")
             st.rerun()
 
 with st.sidebar.expander("🔄  Update Transfer Order Status", expanded=False):
@@ -371,6 +288,12 @@ with st.sidebar.expander("🔄  Update Transfer Order Status", expanded=False):
             submitted = st.form_submit_button("Update Status")
             if submitted:
                 conn = get_conn()
+
+                # Look up this order's current status + details BEFORE updating,
+                # so we know whether this is a fresh transition into "Delivered"
+                order_row = orders[orders.transfer_id == order_id].iloc[0]
+                was_already_delivered = order_row["status"] == "Delivered"
+
                 if new_status in ("Delivered", "Delayed"):
                     conn.execute(
                         "UPDATE TransferOrder SET status=?, actual_delivery_date=? WHERE transfer_id=?",
@@ -381,9 +304,24 @@ with st.sidebar.expander("🔄  Update Transfer Order Status", expanded=False):
                         "UPDATE TransferOrder SET status=? WHERE transfer_id=?",
                         (new_status, int(order_id))
                     )
+
+                # Only move stock the first time an order becomes "Delivered" -
+                # this is the step that actually credits the store and debits
+                # the warehouse. Without this, quantities never leave the warehouse.
+                moved_stock = False
+                if new_status == "Delivered" and not was_already_delivered:
+                    move_inventory(
+                        conn, order_row["sku_id"], order_row["source_node_id"], order_row["dest_node_id"],
+                        int(order_row["quantity"]), actual_date.strftime("%Y-%m-%d")
+                    )
+                    moved_stock = True
+
                 conn.commit()
                 conn.close()
-                st.success(f"Transfer #{order_id} updated to {new_status}. Check 'Order Tracking' to confirm.")
+                if moved_stock:
+                    st.success(f"Transfer #{order_id} marked Delivered — stock moved to the destination. Check 'Stock Quantity by Location'.")
+                else:
+                    st.success(f"Transfer #{order_id} updated to {new_status}. Check 'Order Tracking' to confirm.")
                 st.rerun()
     else:
         st.caption("No transfer orders yet.")
@@ -475,15 +413,14 @@ with tab_overview:
             status_counts = orders["status"].value_counts().reset_index()
             status_counts.columns = ["status", "count"]
             fig1 = go.Figure(data=[go.Pie(
-                labels=status_counts["status"], values=status_counts["count"], hole=0.6,
-                marker=dict(colors=[STATUS_COLORS.get(s, "#888") for s in status_counts["status"]],
-                            line=dict(color="#ffffff", width=2)),
-                textinfo="label+percent", textfont=dict(size=13, color="#101b3d")
+                labels=status_counts["status"], values=status_counts["count"], hole=0.55,
+                marker=dict(colors=[STATUS_COLORS.get(s, "#888") for s in status_counts["status"]]),
+                textinfo="label+percent", textfont=dict(size=13, color="#212121")
             )])
             fig1.update_layout(
                 showlegend=False, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
                 margin=dict(t=10, b=10, l=10, r=10), height=340,
-                annotations=[dict(text=f"{len(orders)}<br>Orders", x=0.5, y=0.5, font_size=18, font_color="#3a6cff", showarrow=False)]
+                annotations=[dict(text=f"{len(orders)}<br>Orders", x=0.5, y=0.5, font_size=18, font_color="#212121", showarrow=False)]
             )
             st.plotly_chart(fig1, use_container_width=True)
         else:
@@ -496,15 +433,12 @@ with tab_overview:
             comp["planned_delivery_date"] = pd.to_datetime(comp["planned_delivery_date"])
             comp["actual_delivery_date"] = pd.to_datetime(comp["actual_delivery_date"])
             comp["delay_days"] = (comp["actual_delivery_date"] - comp["planned_delivery_date"]).dt.days
-            fig2 = px.histogram(comp, x="delay_days", nbins=8, color_discrete_sequence=["#3a6cff"])
+            fig2 = px.histogram(comp, x="delay_days", nbins=8, color_discrete_sequence=["#3949ab"])
             fig2.update_layout(
                 paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-                font_color="#101b3d", margin=dict(t=10, b=10, l=10, r=10), height=340,
-                xaxis_title="Delay (days)", yaxis_title="Orders",
-                xaxis=dict(gridcolor="rgba(16,27,61,0.08)", zerolinecolor="rgba(16,27,61,0.15)"),
-                yaxis=dict(gridcolor="rgba(16,27,61,0.08)", zerolinecolor="rgba(16,27,61,0.15)")
+                font_color="#212121", margin=dict(t=10, b=10, l=10, r=10), height=340,
+                xaxis_title="Delay (days)", yaxis_title="Orders"
             )
-            fig2.update_traces(marker_line_color="#ffffff", marker_line_width=1)
             st.plotly_chart(fig2, use_container_width=True)
         else:
             st.info("No completed deliveries yet.")
@@ -518,14 +452,12 @@ with tab_overview:
             top_risk["label"] = top_risk["sku_id"] + " @ " + top_risk["store"]
             fig3 = px.bar(
                 top_risk.sort_values("days_of_stock_left"), x="days_of_stock_left", y="label", orientation="h",
-                color="days_of_stock_left", color_continuous_scale=["#e0344c", "#e28a1f", "#17b26a"],
+                color="days_of_stock_left", color_continuous_scale=["#c62828", "#ef6c00", "#2e7d32"],
                 labels={"days_of_stock_left": "Days of Stock Left", "label": ""}
             )
             fig3.update_layout(
                 paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-                font_color="#101b3d", margin=dict(t=10, b=10, l=10, r=10), height=380, coloraxis_showscale=False,
-                xaxis=dict(gridcolor="rgba(16,27,61,0.08)", zerolinecolor="rgba(16,27,61,0.15)"),
-                yaxis=dict(gridcolor="rgba(16,27,61,0.03)")
+                font_color="#212121", margin=dict(t=10, b=10, l=10, r=10), height=380, coloraxis_showscale=False
             )
             st.plotly_chart(fig3, use_container_width=True)
         else:
@@ -706,42 +638,3 @@ with tab_tracking:
         )
 
         st.caption(f"Showing {len(filtered_orders)} of {len(orders)} total transfer orders.")
-
-# ================= FOOTER (shown on every tab) =================
-st.markdown("""
-<div class="app-footer">
-    <div class="footer-grid">
-        <div class="footer-brand">
-            <h3>📦 StockBridge</h3>
-            <p>Multi-Echelon Inventory Replenishment Planner — built by Nishan C</p>
-        </div>
-        <div class="footer-links">
-            <a href="mailto:nishanchitral@gmail.com">✉️ nishanchitral@gmail.com</a>
-            <a href="https://www.linkedin.com/in/nishan-c-807b2a36b" target="_blank">🔗 LinkedIn</a>
-        </div>
-    </div>
-</div>
-""", unsafe_allow_html=True)
-
-with st.expander("🔒 Privacy Policy"):
-    st.markdown("""
-    - This dashboard is a student internship project built for demonstration purposes only.
-    - All SKU, inventory, demand, and transfer order data shown here is **simulated** — no real customer, vendor, or business data is used or collected.
-    - Any records you add through the sidebar forms are stored in this app's own database (Turso/SQLite) solely to power the demo, and are not shared with or sold to third parties.
-    - No personal data about visitors (location, device, browsing activity) is collected or tracked by this app.
-    """)
-
-with st.expander("📄 Terms & Conditions"):
-    st.markdown("""
-    - This application is provided **as-is**, for educational and portfolio purposes, with no warranty of accuracy, uptime, or fitness for production/commercial use.
-    - The replenishment recommendations, transfer suggestions, and KPIs shown are generated from simulated data and should not be used for real inventory or business decisions.
-    - You're welcome to explore and interact with the demo (add SKUs, create transfer orders, etc.) — data entered may be reset periodically as part of ongoing development.
-    - For questions, feedback, or collaboration inquiries, reach out via the contact links above.
-    """)
-
-st.markdown("""
-<div class="footer-bottom">
-    <span>© 2026 Nishan C · StockBridge</span>
-    <span>Built with Streamlit &amp; Turso</span>
-</div>
-""", unsafe_allow_html=True)
