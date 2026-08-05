@@ -15,7 +15,7 @@ import streamlit as st
 import plotly.express as px
 import plotly.graph_objects as go
 from datetime import datetime, date
-from db import get_conn, DBIntegrityError
+from db import get_conn, DBIntegrityError, move_inventory
 
 st.set_page_config(page_title="StockBridge Dashboard", page_icon="📦", layout="wide")
 
@@ -381,6 +381,19 @@ with st.sidebar.expander("🔄  Update Transfer Order Status", expanded=False):
                         "UPDATE TransferOrder SET status=? WHERE transfer_id=?",
                         (new_status, int(order_id))
                     )
+
+                # Only actually move stock when the order is marked Delivered
+                if new_status == "Delivered":
+                    order_row = orders[orders["transfer_id"] == order_id].iloc[0]
+                    move_inventory(
+                        conn,
+                        sku_id=order_row["sku_id"],
+                        source_node_id=order_row["source_node_id"],
+                        dest_node_id=order_row["dest_node_id"],
+                        qty=int(order_row["quantity"]),
+                        move_date=actual_date.strftime("%Y-%m-%d")
+                    )
+
                 conn.commit()
                 conn.close()
                 st.success(f"Transfer #{order_id} updated to {new_status}. Check 'Order Tracking' to confirm.")
