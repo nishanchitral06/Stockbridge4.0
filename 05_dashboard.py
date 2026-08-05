@@ -1,3 +1,9 @@
+import streamlit as st
+import pandas as pd
+import importlib
+from db import get_conn, DBIntegrityError, move_inventory
+
+
 def init_db():
     """Ensure all required tables exist in Turso before querying."""
     conn = get_conn()
@@ -87,3 +93,59 @@ def init_db():
             conn.execute(statement)
         except Exception:
             pass
+
+
+def load_all():
+    init_db()
+    conn = get_conn()
+    return {
+        "sku": conn.read_df("SELECT * FROM SKU"),
+        "node": conn.read_df("SELECT * FROM Node"),
+        "inventory": conn.read_df("SELECT * FROM InventorySnapshot"),
+        "lead_time": conn.read_df("SELECT * FROM LeadTimeProfile"),
+        "demand": conn.read_df("SELECT * FROM DemandHistory"),
+        "rec": conn.read_df("SELECT * FROM ReplenishmentRecommendation"),
+        "transfer": conn.read_df("SELECT * FROM TransferOrder"),
+    }
+
+
+def main():
+    st.set_page_config(page_title="Stockbridge Inventory Dashboard", layout="wide")
+    st.title("📦 Stockbridge Inventory Dashboard")
+
+    data = load_all()
+
+    # Check for empty database state
+    if data["sku"].empty or data["inventory"].empty:
+        st.warning("⚠️ Database connected and tables created, but no sample data exists yet.")
+        if st.button("Generate & Populate Sample Data"):
+            with st.spinner("Populating database..."):
+                try:
+                    gen_module = importlib.import_module("02_generate_sample_data")
+                    if hasattr(gen_module, "generate_all_data"):
+                        gen_module.generate_all_data()
+                    elif hasattr(gen_module, "main"):
+                        gen_module.main()
+                    st.success("Sample data populated successfully!")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Failed to generate data automatically: {e}")
+                    st.info("Run `python 02_generate_sample_data.py` manually from your environment.")
+        return
+
+    # Render main dashboard components
+    st.header("Overview")
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Total SKUs", len(data["sku"]))
+    col2.metric("Total Nodes", len(data["node"]))
+    col3.metric("Pending Recommendations", len(data["rec"]))
+
+    st.subheader("Inventory Snapshots")
+    st.dataframe(data["inventory"], use_container_width=True)
+
+    st.subheader("Replenishment Recommendations")
+    st.dataframe(data["rec"], use_container_width=True)
+
+
+if __name__ == "__main__":
+    main()
