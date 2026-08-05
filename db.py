@@ -82,12 +82,18 @@ class DBConnection:
         else:
             self.conn.executemany(sql, rows)
 
-    def read_df(self, sql):
+    def read_df(self, sql, params=None):
+        """
+        params must be supported here - without it, any query that needs to
+        look up a specific SKU/location (like get_latest_qty below) silently
+        breaks, which is what was blocking stock transfers.
+        """
+        params = params or []
         if self.mode == "turso":
-            rs = self.client.execute(sql)
+            rs = self.client.execute(sql, params)
             return pd.DataFrame([list(r) for r in rs.rows], columns=rs.columns)
         else:
-            return pd.read_sql(sql, self.conn)
+            return pd.read_sql(sql, self.conn, params=params)
 
     def commit(self):
         if self.mode == "sqlite":
@@ -104,3 +110,32 @@ class DBConnection:
 
 def get_conn():
     return DBConnection()
+
+
+def get_latest_qty(conn, sku_id, node_id):
+    """Returns the most recent quantity_on_hand for a SKU at a location (0 if none exists yet)."""
+    df = conn.read_df(
+        "SELECT quantity_on_hand FROM InventorySnapshot "
+        "WHERE sku_id=? AND node_id=? ORDER BY snapshot_date DESC LIMIT 1",
+        [sku_id, node_id]
+    )
+    return int(df["quantity_on_hand"].iloc[0]) if not df.empty else 0
+
+
+def move_inventory(conn, sku_id, source_node_id, dest_node_id, qty, move_date):
+    """
+    Moves `qty` units of `sku_id` from source_node_id to dest_node_id by
+    writing two new InventorySnapshot rows dated `move_date` (a string like
+    '2026-08-05'): source reduced, destination increased.
+    """
+    src_qty = get_latest_qty(conn, sku_id, source_node_id)
+    dest_qty = get_latest_qty(conn, sku_id, dest_node_id)
+
+    conn.execute(
+        "INSERT INTO InventorySnapshot (sku_id, node_id, snapshot_date, quantity_on_hand) VALUES (?,?,?,?)",
+        (sku_id, source_node_id, move_date, max(src_qty - qty, 0))
+    )
+    conn.execute(
+        "INSERT INTO InventorySnapshot (sku_id, node_id, snapshot_date, quantity_on_hand) VALUES (?,?,?,?)",
+        (sku_id, dest_node_id, move_date, dest_qty + qty)
+    )
