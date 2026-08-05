@@ -4,10 +4,8 @@ import libsql_client
 import pandas as pd
 
 
-# Define DBIntegrityError so dashboard imports don't fail
 class DBIntegrityError(Exception):
     """Custom exception for database integrity errors."""
-
     pass
 
 
@@ -49,7 +47,6 @@ def get_turso_credentials():
 
 
 class TursoDB:
-
     def __init__(self):
         url, auth_token = get_turso_credentials()
         self.client = libsql_client.create_client_sync(
@@ -84,7 +81,6 @@ class TursoDB:
         quantity: int,
     ):
         """Deduct stock from source node and add it to target node."""
-        # Deduct from source
         self.execute(
             """
             UPDATE InventorySnapshot
@@ -94,7 +90,6 @@ class TursoDB:
             [quantity, source_node_id, sku_id],
         )
 
-        # Add to target
         self.execute(
             """
             UPDATE InventorySnapshot
