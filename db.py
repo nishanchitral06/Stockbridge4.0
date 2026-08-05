@@ -1,4 +1,4 @@
-v"""
+"""
 StockBridge - Database Connection Helper
 ==========================================
 This module makes the rest of the app work with EITHER:
